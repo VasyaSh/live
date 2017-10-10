@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Flash test, check speed of your reaction!</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {
+                background-color: black;
+                color: #249e92;
+                text-align: center;
+                font-family: Tahoma, Arial;
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+        </style>
+        <script>
+            stamp = 0;
+            times = 0;
+            limit = 7;
+            next = true;
+            window.onload = function () {
+                alert("The Flash Test\r\nmeasures the speed of your reaction.\r\n\r\n1) Peering at the screen\r\n2) Press any key or click, when screen flashing\r\n3) See time interval between flash and your reaction");
+                document.body.focus();
+                document.body.onkeydown = document.onmousedown = function () {
+                    next = action();
+                }
+                if (next) {
+                    blink();
+                }
+            }
+            function blink() {
+                var lug = getRandomInt(1500, 8000);
+                setTimeout('toWhite();', lug);
+                setTimeout('toBlack();', lug + 30);
+            }
+            function toWhite() {
+                document.body.style.backgroundColor = "white";
+                setTimeout(function () {
+                    stamp = window.performance.now();
+                }, 15);
+            }
+            function toBlack() {
+                document.body.style.backgroundColor = "black";
+                if (times < limit) {
+                    blink();
+                }
+            }
+            function action() {
+                if (stamp !== 0) {
+                    var timesE = document.getElementById('times');
+                    var html = timesE.innerHTML;
+                    var diff = Math.floor(window.performance.now() - stamp);
+                    stamp = 0;
+                    if (diff < 500) {
+                        times++;
+                        diff = diff / 1000;
+                        html = html + diff + ' sec<br>';
+                    }
+                    if (times >= limit) {
+                        html = html + '<br>Finish! Press F5 for restart.';
+                        timesE.innerHTML = html;
+                        return false;
+                    }
+                    timesE.innerHTML = html;
+                }
+                return true;
+            }
+            function getRandomInt(min, max) {
+                return Math.floor(Math.random() * (max - min)) + min;
+            }
+        </script>
+    </head>
+    <body>
+        <h1>Press any key or click when see flash</h1>
+        <div id="times">
+
+        </div>
+    </body>
+</html>
