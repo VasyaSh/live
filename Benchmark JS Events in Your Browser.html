@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<!--
+    See live: https://www.vasya.pro/flashtest/benchmark.html
+-->
+<html lang="en">
+    <head>
+        <title>Flash test, check speed of your reaction!</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {
+                background-color: black;
+                color: #249e92;
+                text-align: center;
+                font-family: Tahoma, Arial;
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            a {
+                color: #249e92;
+                font-size: 90%;
+            }
+            #eps {
+                font-size: 72pt;
+            }
+        </style>
+        <script>
+            times = [];
+            lugM = 0;
+            lugK = 0;
+            window.onload = function () {
+                dummy = document.getElementById('dummy');
+                dummy.onkeydown = function () {
+                    times.push(window.performance.now() - lugK);
+                    setTimeout(function () {
+                        lugM = window.performance.now();
+                        triggerEvent(dummy, 'MouseEvent', 'mousedown');
+                    }, 0);
+                }
+                dummy.onmousedown = function () {
+                    times.push(window.performance.now() - lugM);
+                    setTimeout(function () {
+                        lugK = window.performance.now();
+                        triggerEvent(dummy, 'KeyboardEvent', 'keydown');
+                    }, 0);
+                }
+                lugK = window.performance.now();
+                triggerEvent(dummy, 'KeyboardEvent', 'keydown');
+                setInterval('show()', 111);
+            }
+
+            function show() {
+                var copy = times;
+                times = [];
+                var len = copy.length;
+                var sum = copy.reduce(function (a, b) {
+                    return a + b;
+                }, 0);
+                var eps = Math.round((len / sum));
+                document.getElementById('eps').innerHTML = eps;
+            }
+
+            function triggerEvent(node, type, eventType) {
+                var event = document.createEvent(type);
+                event.initEvent(eventType, true, true);
+                node.dispatchEvent(event);
+            }
+        </script>
+    </head>
+    <body>
+        <h1>Perfomance of your browser:</h1>
+        <span id="eps">__</span>
+        <h1>events per second.</h1>
+        <a href="index.html">> Flash test - check your reaction here <</a>
+        <div id="dummy"></div>
+    </body>
+</html>
