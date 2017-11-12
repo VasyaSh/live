@@ -2,7 +2,30 @@
 /**
 * Прекрасный генератор графиков
 * Использует GD.
-*
+*Create line charts by GDlib in PHP. For example:
+<?php
+* // Нарисовать график синуса и косинуса, и прямую 0
+* $diagram = new vsDiagram(); // будет 640x480 с черным фоном
+* $diagram->xRange()->yRange(4)
+*         ->addPoly() // имя - line, цвет - белый
+*         ->addPoly('red', 255, 0, 0)
+*         ->addPoly('blue', 0, 0, 255)
+*         ->addVertex('line', 0, 2) // проведем линию из начала
+*         ->addVertex('line', 10, 2); // в конец
+* for ($x = 0; $x < 10; $x+=0.01) {
+*     $y = sin($x) + 2;
+*     $diagram->addVertex('blue', $x, $y);
+* }
+* for ($x = 0; $x < 10; $x+=0.01) {
+*     $y = cos($x) + 2;
+*     $diagram->addVertex('red', $x, $y);
+* }
+* header('Content-Type: image/png');
+* echo $diagram;
+* ?>
+See result here:
+* https://www.vasya.pro/pics/cossin.png
+* 
 * @author Vasiliy B. Shpilchin (http://www.vasya.pro)
 * @copyright [vs] 2011
 */
