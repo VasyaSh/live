@@ -3,7 +3,7 @@
 * Прекрасный генератор графиков
 * Использует GD.
 *Create line charts by GDlib in PHP. For example:
-<?php
+*<?php
 * // Нарисовать график синуса и косинуса, и прямую 0
 * $diagram = new vsDiagram(); // будет 640x480 с черным фоном
 * $diagram->xRange()->yRange(4)
@@ -23,7 +23,7 @@
 * header('Content-Type: image/png');
 * echo $diagram;
 * ?>
-See result here:
+*See result here:
 * https://www.vasya.pro/pics/cossin.png
 * 
 * @author Vasiliy B. Shpilchin (http://www.vasya.pro)
