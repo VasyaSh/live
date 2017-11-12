@@ -1,0 +1,579 @@
+<?php
+/*
+        About game: https://en.wikipedia.org/wiki/Reversi
+        Demo, game by 2 AI - https://www.vasya.pro/phptest/reversi.php
+        
+        Классическая логическая игра "Реверси".
+        ИИ с тремя уровнями сложности.
+        (c)2010 Vasilii B. Shpilchin
+*/
+ 
+// Пример матрицы
+$matrix[0] = array(0,0,0,0,0,0,0,0);
+$matrix[1] = array(0,0,0,0,0,0,0,0);
+$matrix[2] = array(0,0,0,0,0,0,0,0);
+$matrix[3] = array(0,0,0,'X','O',0,0,0);
+$matrix[4] = array(0,0,0,'O','X',0,0,0);
+$matrix[5] = array(0,0,0,0,0,0,0,0);
+$matrix[6] = array(0,0,0,0,0,0,0,0);
+$matrix[7] = array(0,0,0,0,0,0,0,0);
+ 
+// Класс player содержит массивы с координатами
+// своих, чужых и свободных полей на матрице.
+class player
+{
+        // Фишки игрока
+        public $myself = array();
+        // Фишки врага
+        public $enemy = array();
+        // Свободные поля
+        public $free = array();
+        // Обозначение своих фишек
+        private $c = null;
+        // Уровень интеллекта
+        private $iq = null;
+        // Ссылка на матрицу
+        private $matrix;
+        
+        // Задает цвет игрока (обозначение),
+        // уровень интеллекта,
+        // и устанавливает ссылку на матрицу
+        public function __construct($c, $iq, &$matrix)
+        {
+                $this -> c = $c;
+                $this -> iq = $iq;
+                $this -> matrix = &$matrix;
+        }
+        
+        // Ход.
+        // Этот метод изменяет матрицу в соответствии с координатами хода.
+        // Если не заданых координаты, ход вычисляется методом brain.
+        public function go($x = null, $y = null)
+        {
+                // Пересчитать массивы своих полей, чужих и свободных
+                $this -> calcArrs();
+                
+                if (is_null($x) || is_null($y))
+                {
+                        $go = $this -> brain();
+                        // Если нет варианта хода - нечего ходить
+                        if (!isset($go[1]))
+                        {
+                                return 0;
+                        }
+                        $x = $go[1];
+                        $y = $go[0];
+                }
+                // Походить сюда можно только если ячейка пустая
+                if (isset($this -> free[$y][$x]))
+                {
+                        // Влево
+                        if (isset($this -> enemy[$y][$x-1]))
+                        {
+                                // Движение влево. Сразу проверяется возможность поставить фишку через одну клетку.
+                                for ($xc = $x - 2; $xc >= 0; $xc--)
+                                {
+                                        // Если на текущей клетке стоит своя, а справа от нее - чужая, значит линия замкнута.
+                                        if (isset($this -> myself[$y][$xc]) && isset($this -> enemy[$y][$xc+1]))
+                                        {
+                                                $end = $xc;
+                                                break;
+                                        }
+                                        // Если вдруг попалась свободная клетка, значит линия обрывается, и в этом направлении
+                                        // ход ничего не изменит.
+                                        elseif (isset($this -> free[$y][$xc+1]))
+                                        {
+                                                break;
+                                        }
+                                }
+                                // Если $end не создан, значит нечего менять в этом направлении
+                                if (isset($end))
+                                {
+                                        // Заполнение захваченых клеток своими фишками
+                                        for ($xc = $x; $xc >= $end; $xc--)
+                                        {
+                                                $this -> matrix[$y][$xc] = $this -> c;
+                                        }
+                                        unset($end);
+                                }
+                                // Расчет изменений в других направлениях аналогичен.
+                        }
+                        // Вправо
+                        if (isset($this -> enemy[$y][$x+1]))
+                        {
+                                for ($xc = $x + 2; $xc < 8; $xc++)
+                                {
+                                        if (isset($this -> myself[$y][$xc]) && isset($this -> enemy[$y][$xc-1]))
+                                        {
+                                                $end = $xc;
+                                                break;
+                                        }
+                                        elseif (isset($this -> free[$y][$xc-1]))
+                                        {
+                                                break;
+                                        }
+                                }
+                                if (isset($end))
+                                {
+                                        for ($xc = $x; $xc <= $end; $xc++)
+                                        {
+                                                $this -> matrix[$y][$xc] = $this -> c;
+                                        }
+                                        unset($end);
+                                }
+                        }
+                        // Вверх
+                        if (isset($this -> enemy[$y-1][$x]))
+                        {
+                                for ($yc = $y - 2; $yc >= 0; $yc--)
+                                {
+                                        if (isset($this -> myself[$yc][$x]) && isset($this -> enemy[$yc+1][$x]))
+                                        {
+                                                $end = $yc;
+                                                break;
+                                        }
+                                        elseif (isset($this -> free[$yc+1][$x]))
+                                        {
+                                                break;
+                                        }
+                                }
+                                if (isset($end))
+                                {
+                                        for ($yc = $y; $yc >= $end; $yc--)
+                                        {
+                                                $this -> matrix[$yc][$x] = $this -> c;
+                                        }
+                                        unset($end);
+                                }
+                        }
+                        // Вниз
+                        if (isset($this -> enemy[$y+1][$x]))
+                        {
+                                for ($yc = $y + 2; $yc < 8; $yc++)
+                                {
+                                        if (isset($this -> myself[$yc][$x]) && isset($this -> enemy[$yc-1][$x]))
+                                        {
+                                                $end = $yc;
+                                                break;
+                                        }
+                                        elseif (isset($this -> free[$yc-1][$x]))
+                                        {
+                                                break;
+                                        }
+                                }
+                                if (isset($end))
+                                {
+                                        for ($yc = $y; $yc <= $end; $yc++)
+                                        {
+                                                $this -> matrix[$yc][$x] = $this -> c;
+                                        }
+                                        unset($end);
+                                }
+                        }
+                        // Диагональ ПН
+                        if (isset($this -> enemy[$y+1][$x+1]))
+                        {
+                                for ($yc = $y + 2, $xc = $x + 2; $yc < 8 && $xc < 8; $yc++, $xc++)
+                                {
+                                        if (isset($this -> myself[$yc][$xc]) && isset($this -> enemy[$yc-1][$xc-1]))
+                                        {
+                                                $end = true;
+                                                $end_y = $yc;
+                                                $end_x = $xc;
+                                                break;
+                                        }
+                                        elseif (isset($this -> free[$yc-1][$xc-1]))
+                                        {
+                                                break;
+                                        }
+                                }
+                                if (isset($end))
+                                {
+                                        for ($yc = $y, $xc = $x; $yc <= $end_y && $xc <= $end_x; $yc++, $xc++)
+                                        {
+                                                $this -> matrix[$yc][$xc] = $this -> c;
+                                        }
+                                        unset($end);
+                                }
+                        }
+                        // Диагональ ПВ
+                        if (isset($this -> enemy[$y-1][$x+1]))
+                        {
+                                for ($yc = $y - 2, $xc = $x + 2; $yc >= 0 && $xc < 8; $yc--, $xc++)
+                                {
+                                        if (isset($this -> myself[$yc][$xc]) && isset($this -> enemy[$yc+1][$xc-1]))
+                                        {
+                                                $end = true;
+                                                $end_y = $yc;
+                                                $end_x = $xc;
+                                                break;
+                                        }
+                                        elseif (isset($this -> free[$yc+1][$xc-1]))
+                                        {
+                                                break;
+                                        }
+                                }
+                                if (isset($end))
+                                {
+                                        for ($yc = $y, $xc = $x; $yc >= $end_y && $xc <= $end_x; $yc--, $xc++)
+                                        {
+                                                $this -> matrix[$yc][$xc] = $this -> c;
+                                        }
+                                        unset($end);
+                                }
+                        }
+                        // Диагональ ЛН
+                        if (isset($this -> enemy[$y+1][$x-1]))
+                        {
+                                for ($yc = $y + 2, $xc = $x - 2; $yc < 8 && $xc >= 0; $yc++, $xc--)
+                                {
+                                        if (isset($this -> myself[$yc][$xc]) && isset($this -> enemy[$yc-1][$xc+1]))
+                                        {
+                                                $end = true;
+                                                $end_y = $yc;
+                                                $end_x = $xc;
+                                                break;
+                                        }
+                                        elseif (isset($this -> free[$yc-1][$xc+1]))
+                                        {
+                                                break;
+                                        }
+                                }
+                                if (isset($end))
+                                {
+                                        for ($yc = $y, $xc = $x; $yc <= $end_y && $xc >= $end_x; $yc++, $xc--)
+                                        {
+                                                $this -> matrix[$yc][$xc] = $this -> c;
+                                        }
+                                        unset($end);
+                                }
+                        }
+                        // Диагональ ЛВ
+                        if (isset($this -> enemy[$y-1][$x-1]))
+                        {
+                                for ($yc = $y - 2, $xc = $x - 2; $yc >= 0 && $xc >= 0; $yc--, $xc--)
+                                {
+                                        if (isset($this -> myself[$yc][$xc]) && isset($this -> enemy[$yc+1][$xc+1]))
+                                        {
+                                                $end = true;
+                                                $end_y = $yc;
+                                                $end_x = $xc;
+                                                break;
+                                        }
+                                        elseif (isset($this -> free[$yc+1][$xc+1]))
+                                        {
+                                                break;
+                                        }
+                                }
+                                if (isset($end))
+                                {
+                                        for ($yc = $y, $xc = $x; $yc >= $end_y && $xc >= $end_x; $yc--, $xc--)
+                                        {
+                                                $this -> matrix[$yc][$xc] = $this -> c;
+                                        }
+                                        unset($end);
+                                }
+                        }
+                }
+        }
+        
+        // Вычисление лучшего хода :-)
+        // Лучший ход = ход, при котором захватывается максимум фишек.
+        private function brain()
+        {
+                // Варианты ходов
+                $ican = array();
+                foreach ($this -> free as $y => $row)
+                {
+                        foreach ($row as $x => $t)
+                        {
+                                $curr = "$y:$x";
+                                $ican[$curr] = 0;
+                                // Влево
+                                // Расчеты такие же, как при заполнении клеток в методе go.
+                                // Только вместо заполнения происходит расчет количества захватываемых клеток
+                                // по направлениям.
+                                if (isset($this -> enemy[$y][$x-1]))
+                                {
+                                        for ($xc = $x - 2; $xc >= 0; $xc--)
+                                        {
+                                                if (isset($this -> myself[$y][$xc]) && isset($this -> enemy[$y][$xc+1]))
+                                                {
+                                                        $end = $xc;
+                                                        break;
+                                                }
+                                                elseif (isset($this -> free[$y][$xc+1]))
+                                                {
+                                                        break;
+                                                }
+                                        }
+                                        if (isset($end))
+                                        {
+                                                $ican[$curr] += $x - $end - 1;
+                                                unset($end);
+                                        }
+                                }
+                                // Вправо
+                                if (isset($this -> enemy[$y][$x+1]))
+                                {
+                                        for ($xc = $x + 2; $xc < 8; $xc++)
+                                        {
+                                                if (isset($this -> myself[$y][$xc]) && isset($this -> enemy[$y][$xc-1]))
+                                                {
+                                                        $end = $xc;
+                                                        break;
+                                                }
+                                                elseif (isset($this -> free[$y][$xc-1]))
+                                                {
+                                                        break;
+                                                }
+                                        }
+                                        if (isset($end))
+                                        {
+                                                $ican[$curr] += $end - $x - 1;
+                                                unset($end);
+                                        }
+                                }
+                                // Вверх
+                                if (isset($this -> enemy[$y-1][$x]))
+                                {
+                                        for ($yc = $y - 2; $yc >= 0; $yc--)
+                                        {
+                                                if (isset($this -> myself[$yc][$x]) && isset($this -> enemy[$yc+1][$x]))
+                                                {
+                                                        $end = $yc;
+                                                        break;
+                                                }
+                                                elseif (isset($this -> free[$yc+1][$x]))
+                                                {
+                                                        break;
+                                                }
+                                        }
+                                        if (isset($end))
+                                        {
+                                                $ican[$curr] += $y - $end - 1;
+                                                unset($end);
+                                        }
+                                }
+                                // Вниз
+                                if (isset($this -> enemy[$y+1][$x]))
+                                {
+                                        for ($yc = $y + 2; $yc < 8; $yc++)
+                                        {
+                                                if (isset($this -> myself[$yc][$x]) && isset($this -> enemy[$yc-1][$x]))
+                                                {
+                                                        $end = $yc;
+                                                        break;
+                                                }
+                                                elseif (isset($this -> free[$yc-1][$x]))
+                                                {
+                                                        break;
+                                                }
+                                        }
+                                        if (isset($end))
+                                        {
+                                                $ican[$curr] += $end - $y - 1;
+                                                unset($end);
+                                        }
+                                }
+                                // ЛВ
+                                if (isset($this -> enemy[$y-1][$x-1]))
+                                {
+                                        for ($yc = $y - 2, $xc = $x - 2; $yc >= 0 && $xc >= 0; $yc--, $xc--)
+                                        {
+                                                if (isset($this -> myself[$yc][$xc]) && isset($this -> enemy[$yc+1][$xc+1]))
+                                                {
+                                                        $end = $yc;
+                                                        break;
+                                                }
+                                                elseif (isset($this -> free[$yc+1][$xc+1]))
+                                                {
+                                                        break;
+                                                }
+                                        }
+                                        if (isset($end))
+                                        {
+                                                $ican[$curr] += $y - $end - 1;
+                                                unset($end);
+                                        }
+                                }
+                                // ЛН
+                                if (isset($this -> enemy[$y+1][$x-1]))
+                                {
+                                        for ($yc = $y + 2, $xc = $x - 2; $yc < 8 && $xc >= 0; $yc++, $xc--)
+                                        {
+                                                if (isset($this -> myself[$yc][$xc]) && isset($this -> enemy[$yc-1][$xc+1]))
+                                                {
+                                                        $end = $yc;
+                                                        break;
+                                                }
+                                                elseif (isset($this -> free[$yc-1][$xc+1]))
+                                                {
+                                                        break;
+                                                }
+                                        }
+                                        if (isset($end))
+                                        {
+                                                $ican[$curr] += $end - $y - 1;
+                                                unset($end);
+                                        }
+                                }
+                                // ПВ
+                                if (isset($this -> enemy[$y-1][$x+1]))
+                                {
+                                        for ($yc = $y - 2, $xc = $x + 2; $yc >= 0 && $xc <= 8; $yc--, $xc++)
+                                        {
+                                                if (isset($this -> myself[$yc][$xc]) && isset($this -> enemy[$yc+1][$xc-1]))
+                                                {
+                                                        $end = $yc;
+                                                        break;
+                                                }
+                                                elseif (isset($this -> free[$yc+1][$xc-1]))
+                                                {
+                                                        break;
+                                                }
+                                        }
+                                        if (isset($end))
+                                        {
+                                                $ican[$curr] += $y - $end - 1;
+                                                unset($end);
+                                        }
+                                }
+                                // ПН
+                                if (isset($this -> enemy[$y+1][$x+1]))
+                                {
+                                        for ($yc = $y + 2, $xc = $x + 2; $yc <= 8 && $xc <= 8; $yc++, $xc++)
+                                        {
+                                                if (isset($this -> myself[$yc][$xc]) && isset($this -> enemy[$yc-1][$xc-1]))
+                                                {
+                                                        $end = $yc;
+                                                        break;
+                                                }
+                                                elseif (isset($this -> free[$yc-1][$xc-1]))
+                                                {
+                                                        break;
+                                                }
+                                        }
+                                        if (isset($end))
+                                        {
+                                                $ican[$curr] += $end - $y - 1;
+                                                unset($end);
+                                        }
+                                }
+                                // Есди ход бесполезен - удалить этот вариант.
+                                if ($ican[$curr] == 0)
+                                {
+                                        unset($ican[$curr]);
+                                }
+                        }
+                }
+                // Выбор лучшего варианта хода.
+                // Если iq = 0, выбирается случайный вариант.
+                if ($this -> iq == 0)
+                {
+                        $move = array_rand($ican);
+                }
+                else
+                {
+                        // Иначе вычисляем лучший вариант
+                        asort($ican);
+                        end($ican);
+                        $best = key($ican);
+                        // Если iq=1, просто возвращаем первый лучший вариант
+                        if ($this -> iq === 1)
+                        {
+                                $move = $best;
+                        }
+                        // Иначе выбираем случайных из лучший
+                        else
+                        {
+                                $more = array();
+                                foreach ($ican as $k => $v)
+                                {
+                                        if ($v === $ican[$best])
+                                        {
+                                                $more[] = $k;
+                                        }
+                                }
+                                if (!empty($more))
+                                {
+                                        $more = array_values($more);
+                                        shuffle($more);
+                                        $best = array_shift($more);
+                                }
+                                $move = $best;
+                        }
+                }
+                return explode(':', $move);
+        }
+        
+        // Вычисляет удобные массивы.
+        // Это делается в целях уменьшения вложености условий в скрипте.
+        // Вместо того, чтобы каждый раз проверять, свободна ли клетка,
+        // можно просто перебирать массив free.
+        public function calcArrs()
+        {
+                $this -> myself = array();
+                $this -> enemy = array();
+                $this -> free = array();
+                foreach ($this -> matrix as $y => $row)
+                {
+                        foreach ($row as $x => $cell)
+                        {
+                                if ($cell === $this -> c)
+                                {
+                                        $this -> myself[$y][$x] = 1;
+                                }
+                                elseif ($cell !== 0)
+                                {
+                                        $this -> enemy[$y][$x] = 1;
+                                }
+                                else
+                                {
+                                        $this -> free[$y][$x] = 1;
+                                }
+                        }
+                }
+        }
+}
+ 
+// Игра двух компьютеров :-)
+function print_m(&$matrix)
+{
+        foreach ($matrix as $row)
+        {
+                foreach ($row as $cell)
+                {
+                        if ($cell === 0)
+                        {
+                                $cell = '.';
+                        }
+                        echo "$cell ";
+                }
+                echo "\n";
+        }
+        echo "\r\n";
+}
+ 
+$player1 = new player('X', intval($_GET['iq1']), $matrix);
+$player2 = new player('O', intval($_GET['iq2']), $matrix);
+ 
+echo '<pre>';
+for ($i=1; $i<=(8*8)-4; $i++)
+{
+        is_int($i/2)?$player2->go():$player1->go();
+        print_m($matrix);
+}
+echo "Scores:\r\n";
+$player1 -> calcArrs();
+$p1 = 0;
+$p2 = 0;
+foreach ($player1 -> myself as $arr)
+{
+        $p1 += array_sum($arr);
+}
+foreach ($player1 -> enemy as $arr)
+{
+        $p2 += array_sum($arr);
+}
+echo "Player1: $p1\r\nPlayer2: $p2";
