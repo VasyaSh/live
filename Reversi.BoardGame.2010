@@ -1,7 +1,9 @@
 <?php
 /*
         About game: https://en.wikipedia.org/wiki/Reversi
-        Demo, game by 2 AI - https://www.vasya.pro/phptest/reversi.php
+        3 AI levels
+        Demo, game by 2 AI, where first AI level 0, two AI level 2:
+        https://www.vasya.pro/phptest/reversi.php?iq1=0&iq2=2
         
         Классическая логическая игра "Реверси".
         ИИ с тремя уровнями сложности.
